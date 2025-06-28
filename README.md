@@ -9,6 +9,8 @@
 [![PsychoPy Integration](https://img.shields.io/badge/PsychoPy-Complete%20Integration-orange.svg)](https://psychopy.org)
 [![AI Agents](https://img.shields.io/badge/AI%20Agents-Cognitive%20Modeling-purple.svg)](https://github.com/ai-in-pm/psychopy-ai-agent-builder)
 
+https://github.com/user-attachments/assets/807919de-d1e7-4292-a6f9-b75a34072c28
+
 ![psychopy_ai_agents](https://github.com/user-attachments/assets/65e749c6-d947-4d95-86a7-a9190d68ee93)
 ![psychopy_ai_agents_II](https://github.com/user-attachments/assets/b2844ba4-a3b7-4e3b-b978-678e7d9f9142)
 
