@@ -1,0 +1,174 @@
+# PsychoPy AI Agent Builder - Core Dependencies
+
+# Core AI and ML libraries
+openai>=1.0.0
+anthropic>=0.7.0
+google-generativeai>=0.3.0
+langchain>=0.1.0
+langchain-community>=0.0.10
+transformers>=4.30.0
+torch>=2.0.0
+numpy>=1.24.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+
+# Vector databases and embeddings
+chromadb>=0.4.0
+faiss-cpu>=1.7.4
+sentence-transformers>=2.2.0
+tiktoken>=0.5.0
+
+# Web and API tools
+requests>=2.31.0
+httpx>=0.24.0
+beautifulsoup4>=4.12.0
+selenium>=4.10.0
+aiohttp>=3.8.0
+fastapi>=0.100.0
+uvicorn>=0.23.0
+
+# Data processing and analysis
+openpyxl>=3.1.0
+python-docx>=0.8.11
+PyPDF2>=3.0.0
+python-multipart>=0.0.6
+jsonschema>=4.17.0
+pyyaml>=6.0
+toml>=0.10.2
+
+# Database and storage
+sqlalchemy>=2.0.0
+alembic>=1.11.0
+redis>=4.6.0
+pymongo>=4.4.0
+
+# Async and concurrency
+asyncio-mqtt>=0.13.0
+celery>=5.3.0
+kombu>=5.3.0
+
+# Monitoring and logging
+prometheus-client>=0.17.0
+structlog>=23.1.0
+rich>=13.4.0
+tqdm>=4.65.0
+
+# Security and authentication
+cryptography>=41.0.0
+pyjwt>=2.8.0
+passlib>=1.7.4
+bcrypt>=4.0.1
+
+# Development and testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+black>=23.7.0
+flake8>=6.0.0
+mypy>=1.5.0
+pre-commit>=3.3.0
+
+# GUI and visualization
+streamlit>=1.25.0
+plotly>=5.15.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+dash>=2.11.0
+
+# File system and utilities
+watchdog>=3.0.0
+click>=8.1.0
+python-dotenv>=1.0.0
+psutil>=5.9.0
+schedule>=1.2.0
+
+# Network and communication
+websockets>=11.0.0
+pika>=1.3.0
+zmq>=0.0.0
+
+# Image and media processing
+pillow>=10.0.0
+opencv-python>=4.8.0
+imageio>=2.31.0
+
+# Configuration and environment
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+dynaconf>=3.2.0
+
+# Cloud and deployment
+boto3>=1.28.0
+azure-storage-blob>=12.17.0
+google-cloud-storage>=2.10.0
+docker>=6.1.0
+
+# Specialized AI tools
+langdetect>=1.0.9
+spacy>=3.6.0
+nltk>=3.8.1
+textstat>=0.7.3
+
+# Memory and caching
+diskcache>=5.6.0
+joblib>=1.3.0
+pickle5>=0.0.12
+
+# Time and scheduling
+pytz>=2023.3
+python-dateutil>=2.8.2
+croniter>=1.4.0
+
+# Validation and serialization
+marshmallow>=3.20.0
+cerberus>=1.3.4
+voluptuous>=0.13.1
+
+# Process management
+supervisor>=4.2.5
+gunicorn>=21.2.0
+
+# Optional dependencies for specific features
+# Uncomment as needed:
+
+# For advanced NLP
+# spacy-transformers>=1.2.5
+# textblob>=0.17.1
+
+# For computer vision
+# torchvision>=0.15.0
+# ultralytics>=8.0.0
+
+# For audio processing
+# librosa>=0.10.0
+# soundfile>=0.12.0
+
+# For graph processing
+# networkx>=3.1
+# pygraphviz>=1.11
+
+# For scientific computing
+# scipy>=1.11.0
+# sympy>=1.12
+
+# For advanced databases
+# neo4j>=5.11.0
+# elasticsearch>=8.9.0
+
+# For message queues
+# kafka-python>=2.0.2
+# confluent-kafka>=2.2.0
+
+# For workflow orchestration
+# prefect>=2.11.0
+# airflow>=2.7.0
+
+# Platform-specific dependencies
+# Windows
+# pywin32>=306; platform_system=="Windows"
+
+# macOS
+# pyobjc>=9.2; platform_system=="Darwin"
+
+# Linux
+# python-xlib>=0.33; platform_system=="Linux"

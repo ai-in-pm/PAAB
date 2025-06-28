@@ -1,0 +1,351 @@
+# PsychoPy AI Agent Builder - Docker Compose Configuration
+# Complete development and production environment setup
+
+version: '3.8'
+
+services:
+  # Main PAAB application
+  paab-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+      args:
+        BUILD_DATE: ${BUILD_DATE:-$(date -u +'%Y-%m-%dT%H:%M:%SZ')}
+        VERSION: ${VERSION:-1.0.0}
+        VCS_REF: ${VCS_REF:-$(git rev-parse --short HEAD)}
+    image: paab:${VERSION:-latest}
+    container_name: paab-app
+    restart: unless-stopped
+    ports:
+      - "8501:8501"  # Streamlit Studio
+      - "8080:8080"  # API Server
+    environment:
+      - PAAB_ENV=production
+      - PAAB_LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - PAAB_MAX_CONCURRENT_CREWS=${MAX_CONCURRENT_CREWS:-10}
+      - PAAB_MAX_WORKERS=${MAX_WORKERS:-50}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - DATABASE_URL=postgresql://paab:${POSTGRES_PASSWORD:-paab123}@postgres:5432/paab
+      - REDIS_URL=redis://redis:6379/0
+      - MONGODB_URL=mongodb://mongo:27017/paab
+    volumes:
+      - paab-data:/app/data
+      - paab-cache:/app/cache
+      - paab-logs:/app/logs
+      - ./config:/app/config:ro
+    depends_on:
+      - postgres
+      - redis
+      - mongo
+    networks:
+      - paab-network
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Development version with hot reload
+  paab-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    image: paab:dev
+    container_name: paab-dev
+    restart: unless-stopped
+    ports:
+      - "8502:8501"  # Dev Streamlit Studio
+      - "8081:8080"  # Dev API Server
+      - "8888:8888"  # Jupyter
+    environment:
+      - PAAB_ENV=development
+      - PAAB_LOG_LEVEL=DEBUG
+      - PAAB_DEBUG=true
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - DATABASE_URL=postgresql://paab:${POSTGRES_PASSWORD:-paab123}@postgres:5432/paab_dev
+      - REDIS_URL=redis://redis:6379/1
+    volumes:
+      - ./src:/app/src
+      - ./examples:/app/examples
+      - ./tests:/app/tests
+      - ./config:/app/config
+      - paab-dev-data:/app/data
+      - paab-dev-cache:/app/cache
+      - paab-dev-logs:/app/logs
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - paab-network
+    profiles:
+      - dev
+
+  # PostgreSQL database
+  postgres:
+    image: postgres:15-alpine
+    container_name: paab-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=paab
+      - POSTGRES_USER=paab
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-paab123}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - paab-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paab -d paab"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching and message queuing
+  redis:
+    image: redis:7-alpine
+    container_name: paab-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis123}
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - paab-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # MongoDB for document storage
+  mongo:
+    image: mongo:6
+    container_name: paab-mongo
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=paab
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:-mongo123}
+      - MONGO_INITDB_DATABASE=paab
+    volumes:
+      - mongo-data:/data/db
+      - ./scripts/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    ports:
+      - "27017:27017"
+    networks:
+      - paab-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: paab-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - paab-network
+    profiles:
+      - monitoring
+
+  # Grafana for metrics visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: paab-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - paab-network
+    profiles:
+      - monitoring
+
+  # Jaeger for distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: paab-jaeger
+    restart: unless-stopped
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "14268:14268"  # Jaeger collector
+    networks:
+      - paab-network
+    profiles:
+      - monitoring
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: paab-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx-logs:/var/log/nginx
+    depends_on:
+      - paab-app
+    networks:
+      - paab-network
+    profiles:
+      - production
+
+  # Elasticsearch for log aggregation
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.8.0
+    container_name: paab-elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - paab-network
+    profiles:
+      - logging
+
+  # Kibana for log visualization
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.8.0
+    container_name: paab-kibana
+    restart: unless-stopped
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - paab-network
+    profiles:
+      - logging
+
+  # Logstash for log processing
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.8.0
+    container_name: paab-logstash
+    restart: unless-stopped
+    volumes:
+      - ./logging/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+      - paab-logs:/app/logs:ro
+    depends_on:
+      - elasticsearch
+    networks:
+      - paab-network
+    profiles:
+      - logging
+
+  # MinIO for object storage
+  minio:
+    image: minio/minio:latest
+    container_name: paab-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_USER:-paab}
+      - MINIO_ROOT_PASSWORD=${MINIO_PASSWORD:-paab123456}
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9000:9000"  # MinIO API
+      - "9001:9001"  # MinIO Console
+    networks:
+      - paab-network
+    profiles:
+      - storage
+
+  # Ollama for local LLM serving
+  ollama:
+    image: ollama/ollama:latest
+    container_name: paab-ollama
+    restart: unless-stopped
+    volumes:
+      - ollama-data:/root/.ollama
+    ports:
+      - "11434:11434"
+    networks:
+      - paab-network
+    profiles:
+      - llm
+
+# Named volumes for data persistence
+volumes:
+  paab-data:
+    driver: local
+  paab-cache:
+    driver: local
+  paab-logs:
+    driver: local
+  paab-dev-data:
+    driver: local
+  paab-dev-cache:
+    driver: local
+  paab-dev-logs:
+    driver: local
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  mongo-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  elasticsearch-data:
+    driver: local
+  minio-data:
+    driver: local
+  ollama-data:
+    driver: local
+  nginx-logs:
+    driver: local
+
+# Networks
+networks:
+  paab-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
